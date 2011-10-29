@@ -1,0 +1,69 @@
+
+This is the source file from which the README file is generated.
+
+This file is written in Perl's Plain Old Documentation (POD) format.
+Run the following Perl commands to convert it to text or to HTML
+for easy reading:
+
+  podchecker README.pod  # Optional, check syntax.
+  pod2text README.pod >README.txt
+
+  # pod2html seems buggy, at least in perl v5.10.1, therefore
+  # I'm using this long one-liner instead (with bash):
+  perl -MPod::Simple::HTML  -e "\$p = Pod::Simple::HTML->new; \$p->index( 1 ); \$p->output_fh( *STDOUT{IO} ); \$p->force_title('JTAG DPI'); \$p->parse_file('README.pod');"  >README.html
+
+This file is best edited with emacs module pod-mode, available in CPAN.
+However, the POD syntax is quite simple and can be edited with a standard text editor.
+
+=pod
+
+=head1 JTAG DPI module for OpenRISC simulation with Verilator
+
+If you are simulating an OpenRISC-based System-on-a-Chip (SoC) with
+L<< Icarus Verilog|http://iverilog.icarus.com/ >>, you have probably
+come across the L<< MinSoC|http://www.minsoc.com/ >> project.
+MinSoC includes a copy of Nathan Yawn's L<< Advanced Debug System|http://opencores.org/project,adv_debug_sys >>,
+which among other things allows you to create a virtual JTAG interface, so that you can start GDB (the GNU debugger)
+on your PC and connect to the simulated system as if it were real hardware and you were using a real JTAG cable.
+
+The virtual JTAG connector is implemented as a VPI module which only works with Icarus Verilog and the like.
+This JTAG DPI module is a replacement that allows simulating the SoC with Verilator.
+Similarly to its VPI counterpart, the JTAG DPI module connects the JTAG TAP, written in Verilog,
+with a Verilator DPI module, written in C++. The C++ part creates a listening TCP socket so that
+adv_jtag_bridge (which is part of the Advanced Debug System) can connect to it over TCP/IP.
+The network connection between the JTAG DPI module and the adv_jtag_bridge is effectively a virtual JTAG cable.
+
+The JTAG DPI module is loosely based on its VPI counterpart (as of october 2011, version 2.5),
+as the socket protocol has to remain compatible with the adv_jtag_bridge side. Please note that
+there is a bug in adv_jtag_bridge, so that the TCP port number has the wrong format on
+little-endian processors (which includes all Intel-compatible PCs). Until this bug is fixed
+you must specify on one side the familiar port number 4567 (which is 11D7 in hex),
+and on the other side port number 55057 (which is D711 in hex, note how the bytes are reversed).
+For the DPI side, look at constant LISTENING_TCP_PORT in the jtag_dpi.v file,
+and for the adv_jtag_bridge side, look at command-line parameter -p .
+
+Also note that, if the socket connection is lost for some reason, you can start another instance
+of adv_jtag_bridge and connect to the simulation again.
+
+There is no makefile or installation instructions. You need to be familiar with Verilator,
+as you need to add the jtag_dpi.cpp file to the generated C++ code, either in the makefile
+you are using, or by just including it (with #include) from your main .cpp file. Of course,
+you also need to add the jtag_dpi.v file to the Verilog sources and connect
+its Verilog module to the JTAG TAP module, but that should be very easy.
+
+B<< Important note: >> The current implementation of this DPI module only runs on Linux.
+
+As an alternative to this DPI module, take a look at L<< Embecosm|http://www.embecosm.com/ >>'s project
+"Cycle Accurate SystemC JTAG Interface: Reference Implementation" (among other software they publish),
+as they have a similar type of virtual JTAG interface for Verilator written in SystemC.
+
+
+=head1 License
+
+Copyright (C) R. Diez 2011,  rdiezmail-openrisc at yahoo.de
+
+The JTAG DPI source code is released under the LGPL 3 license.
+
+This document is released under the Creative Commons Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0) license.
+
+=cut
