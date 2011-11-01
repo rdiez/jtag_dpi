@@ -50,7 +50,14 @@
    from http://www.gnu.org/licenses/
 */
 
+// NOTE: The Verilator-generated forward declarations of the DPI methods like jtag_dpi_init()
+//       must be visible to this file. If you are compiling this file as a standalone module,
+//       you will have to include here the apropriate Verilator-generated header file.
+//       Example:  #include "Vminsoc_bench.h"
+
 #include <assert.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>

@@ -45,10 +45,14 @@ and for the adv_jtag_bridge side, look at command-line parameter -p .
 Also note that, if the socket connection is lost for some reason, you can start another instance
 of adv_jtag_bridge and connect to the simulation again.
 
-There is no makefile or installation instructions. You need to be familiar with Verilator,
-as you need to add the jtag_dpi.cpp file to the generated C++ code, either in the makefile
-you are using, or by just including it (with #include) from your main .cpp file. Of course,
-you also need to add the jtag_dpi.v file to the Verilog sources and connect
+There is no makefile or further installation instructions. You need to be familiar with Verilator,
+as you need to add the jtag_dpi.cpp file to the generated C++ code. There are a few alternatives:
+
+  1) Add the jtag_dpi.cpp to the Verilator command line.
+  2) Include jtag_dpi.cpp from your main .cpp file (with #include).
+  3) Edit the makefile you are using.
+
+You also need to add the jtag_dpi.v file to the Verilog sources and connect
 its Verilog module to the JTAG TAP module, but that should be very easy.
 
 B<< Important note: >> The current implementation of this DPI module only runs on Linux.
