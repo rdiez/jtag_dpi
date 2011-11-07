@@ -1,0 +1,83 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o posix    # Make command substitution subshells inherit the errexit option.
+                # Otherwise, the 'command' in this example will not fail for non-zero exit codes:  echo "$(command)"
+
+# Returns the number of processors + 1. Probably not the best value for make -j .
+
+get_make_j_val ()
+{
+  # $1 = name of the variable name to return the value in
+
+  local GET_MAKE_J_VAL_RET_VAR_NAME="$1"
+  local -i GET_MAKE_J_VAL_RET_VALUE
+
+  local -i GET_MAKE_J_VAL_PROCESSOR_COUNT
+
+  # Environment variable NUMBER_OF_PROCESSORS is always set under Windows.
+  if [ "${NUMBER_OF_PROCESSORS:-first}" == "${NUMBER_OF_PROCESSORS:-second}" ]
+  then
+
+    GET_MAKE_J_VAL_PROCESSOR_COUNT=$NUMBER_OF_PROCESSORS
+
+  else
+
+    GET_MAKE_J_VAL_PROCESSOR_COUNT="$(getconf _NPROCESSORS_ONLN)"
+
+  fi
+
+  if [ $GET_MAKE_J_VAL_PROCESSOR_COUNT -lt 1 ]
+  then
+    abort "Cannot determine the number of processors."
+  fi
+
+  GET_MAKE_J_VAL_RET_VALUE=$(( GET_MAKE_J_VAL_PROCESSOR_COUNT + 1 ))
+
+  eval "$GET_MAKE_J_VAL_RET_VAR_NAME=\$GET_MAKE_J_VAL_RET_VALUE"
+} 
+
+
+VERILATOR_OUTPUT_DIR="verilator_output"
+
+# This makes sure the filenames in all warning and error messages are absolute paths,
+# so that clicking on them in your favourite environment will always find the right file.
+CURDIR="$(pwd)"
+
+# TODO: integrate this list with MinSoC's project generator.
+declare -a INCLUDE_PATHS=(
+    -I$CURDIR/../../bench/verilog
+    -I$CURDIR/../../bench/verilog/dpi
+    -I$CURDIR/../../backend
+    -I$CURDIR/../../rtl/verilog/or1200/rtl/verilog
+    -I$CURDIR/../../rtl/verilog
+    -I$CURDIR/../../rtl/verilog/adv_debug_sys/Hardware/adv_dbg_if/rtl/verilog
+    -I$CURDIR/../../rtl/verilog/adv_debug_sys/Hardware/jtag/tap/rtl/verilog
+    -I$CURDIR/../../rtl/verilog//uart16550/rtl/verilog
+  )
+
+TOP_LEVEL_MODULE="minsoc_bench_core"
+
+verilator \
+    -y "$CURDIR" \
+    "${INCLUDE_PATHS[@]}" \
+    --Mdir "$VERILATOR_OUTPUT_DIR" \
+    -sv --cc --exe \
+    -Wall -Wno-fatal \
+    -O3 --assert \
+    "$TOP_LEVEL_MODULE.v" \
+    $CURDIR/../../bench/verilog/dpi/jtag_dpi.cpp \
+    $CURDIR/../../bench/verilog/verilator_main.cpp \
+    -o "$TOP_LEVEL_MODULE.exe"
+
+pushd $VERILATOR_OUTPUT_DIR >/dev/null
+
+get_make_j_val MAKE_J_VAL
+
+export OPT="-O3 -Wall -Wwrite-strings -DDEBUG"
+
+make -f "V$TOP_LEVEL_MODULE.mk" -j "$MAKE_J_VAL"
+
+popd >/dev/null

@@ -26,43 +26,118 @@ MinSoC includes a copy of Nathan Yawn's L<< Advanced Debug System|http://opencor
 which among other things allows you to create a virtual JTAG interface, so that you can start GDB (the GNU debugger)
 on your PC and connect to the simulated system as if it were real hardware and you were using a real JTAG cable.
 
-The virtual JTAG connector is implemented as a VPI module which only works with Icarus Verilog and the like.
-This JTAG DPI module is a replacement that allows simulating the SoC with Verilator.
+The virtual JTAG cable implemented in the Advanced Debug Interface is a VPI module which only works with
+Icarus Verilog and the like. This JTAG DPI module is a replacement written in SystemVerilog's
+Direct Programming Interface (DPI) that allows simulating the SoC with Verilator (and probably other
+simulators that support DPI).
 Similarly to its VPI counterpart, the JTAG DPI module connects the JTAG TAP, written in Verilog,
-with a Verilator DPI module, written in C++. The C++ part creates a listening TCP socket so that
+with a DPI module, written in C++. The C++ part creates a listening TCP socket so that
 adv_jtag_bridge (which is part of the Advanced Debug System) can connect to it over TCP/IP.
 The network connection between the JTAG DPI module and the adv_jtag_bridge is effectively a virtual JTAG cable.
 
-The JTAG DPI module is loosely based on its VPI counterpart (as of october 2011, version 2.5),
-as the socket protocol has to remain compatible with the adv_jtag_bridge side. Please note that
-there is a bug in adv_jtag_bridge, so that the TCP port number has the wrong format on
+Note that, if the socket connection is lost for some reason, you can start another instance
+of adv_jtag_bridge and connect to the simulation again. This is equivalent to disconnecting
+and reconnecting a physical JTAG cable on real hardware.
+
+The JTAG DPI module is loosely based on its VPI counterpart in the Advanced Debug System
+(as of october 2011, version 2.5),
+as the (very simple) protocol over the TCP socket has to remain compatible with the adv_jtag_bridge side.
+There is nothing specific to OpenRISC in the JTAG DPI module. However, if you wish to reuse it
+for another processor arquitecture, you will need to modify the adv_jtag_bridge counterpart accordingly.
+
+As an alternative to this DPI module, take a look at L<< Embecosm|http://www.embecosm.com/ >>'s project
+"Cycle Accurate SystemC JTAG Interface: Reference Implementation" (among other software they publish),
+as they have a similar type of virtual JTAG interface for Verilator written in SystemC.
+
+=head2 Installation instructions
+
+I hacked together a MinSoC version on my PC which seems to work with Verilator.
+I can connect to the simulation with the Advanced Debugging System, set breakpoints
+with GDB and step through the C sources. I was very happy to see the Verilator simulation
+fly compared to Icarus Verilog. I have done very limited testing, so I would love
+to hear your experiences with this module. This section describes how I have done it.
+
+Note that the current implementation of the JTAG DPI module has been developed and tested only on Linux.
+
+You need to be familiar with Verilator or your simulator of choice,
+as you need to add the jtag_dpi.cpp file to the generated C++ code. There are a few ways to do that:
+
+  Alternative 1) Add the jtag_dpi.cpp to the Verilator command line.
+  Alternative 2) Include jtag_dpi.cpp from your main .cpp file (with #include).
+  Alternative 3) Edit the makefile you are using.
+
+You also need to add the jtag_dpi.v file to the Verilog sources and connect
+its Verilog module to the JTAG TAP module, you need something like this:
+
+  jtag_dpi jtag_dpi_instance
+    (
+     .system_clk( clock ),
+     .jtag_tms_o( dbg_tms_i ),
+     .jtag_tck_o( dbg_tck_i ),
+     .jtag_trst_o(),  // Leave unconnected or use it in your design as you wish.
+     .jtag_tdi_o( dbg_tdi_i ),
+     .jtag_tdo_i( dbg_tdo_o )
+    );
+
+See the following files included in this package for an example on how to generate and run
+the Verilator simulation in MinSoC:
+
+  verilator_main.cpp
+  generate_verilator_bench
+  run_verilator_bench
+
+The top-level test bench module needs to declare the clock and reset signals as
+input arguments, as the C++ side will be generating them.
+You will probably have to make other small amendments to those files in order
+to make it work with your MinSoC version.
+
+At the time of writing these instructions, Verilator printed many lint warnings for many
+of the Verilog modules included with MinSoC. In my opinion, it would be worth fixing those warnings,
+in order to uncover potential problems or to improve the simulation performance.
+
+Please note that there is a bug in adv_jtag_bridge (as of october 2011, version 2.5),
+so that the TCP port number has the wrong format on
 little-endian processors (which includes all Intel-compatible PCs). Until this bug is fixed
 you must specify on one side the familiar port number 4567 (which is 11D7 in hex),
 and on the other side port number 55057 (which is D711 in hex, note how the bytes are reversed).
 For the DPI side, look at constant LISTENING_TCP_PORT in the jtag_dpi.v file,
 and for the adv_jtag_bridge side, look at command-line parameter -p .
 
-Also note that, if the socket connection is lost for some reason, you can start another instance
-of adv_jtag_bridge and connect to the simulation again.
+=head2 How you can help
 
-There is no makefile or further installation instructions. You need to be familiar with Verilator,
-as you need to add the jtag_dpi.cpp file to the generated C++ code. There are a few alternatives:
+MinSoC's UART and Ethernet test benches do not work under Verilator. The only way to
+interact with the Verilator simulation is the GDB connection over JTAG and the occasional $display()
+message on the debug console. At the very minimum I would love to get the UART test bench running,
+as the "Hello World" message at the end is very reassuring.
 
-  1) Add the jtag_dpi.cpp to the Verilator command line.
-  2) Include jtag_dpi.cpp from your main .cpp file (with #include).
-  3) Edit the makefile you are using.
+Ideally, you could help by rewriting the UART test bench and UART monitor in pure
+synthesisable Verilog (things like $display() do also work). That means mainly
+no fork/join and no waiting for a signal to change with a statement like this:
 
-You also need to add the jtag_dpi.v file to the Verilog sources and connect
-its Verilog module to the JTAG TAP module, but that should be very easy.
+  @(posedge new_char);
 
-B<< Important note: >> The current implementation of this DPI module only runs on Linux.
+The UART test bench is small and should be no real challenge for an experience
+Verilog developer. Rewriting the Ethernet test model in the same way would be
+a good bonus.
 
-As an alternative to this DPI module, take a look at L<< Embecosm|http://www.embecosm.com/ >>'s project
-"Cycle Accurate SystemC JTAG Interface: Reference Implementation" (among other software they publish),
-as they have a similar type of virtual JTAG interface for Verilator written in SystemC.
+About writing those test modules in Verilog, I have avoided SystemC until now for
+these reasons:
 
+  1) It's slower than Verilator's native C++.
+  2) I don't have the time now to learn it (as of Nov 2011).
+  3) I don't want to burden the users with the installation
+     of the extra SystemC and SystemPerl libraries needed by Verilator
+  4) Test models in pure synthesisable Verilog are more complicated but should work
+     on all simulators, whether cycle-based or not.
 
-=head1 License
+A separate SystemC test bench is certainly still an option if somebody is willing
+to take this up. Note that Embecosm has already released a SystemC test bench
+for OpenRISC (but not for MinSoC), see the link above.
+
+I don't have access to other commercial simulators to test the JTAG DPI module on,
+maybe you can help here too. Cygwin and BSD maintainers are also welcome.
+
+=head2 License
 
 Copyright (C) R. Diez 2011,  rdiezmail-openrisc at yahoo.de
 
