@@ -23,12 +23,12 @@
   from http://www.gnu.org/licenses/
 */
 
-`define LISTENING_TCP_PORT 4567
+`define JTAG_DPI_LISTENING_TCP_PORT 4567
 
 // Whether to listen on localhost / 127.0.0.1 only. Otherwise,
 // it listens on all IP addresses, which means any computer
 // in the network can connect to the JTAG DPI module.
-`define LISTEN_ON_LOCAL_ADDR_ONLY 1
+`define JTAG_DPI_LISTEN_ON_LOCAL_ADDR_ONLY 1
 
 // 1/2 of a JTAG TCK clock period will be this many system_clk ticks.
 //
@@ -51,10 +51,10 @@
 //    unreasonable when considering the real system hardware.
 //
 // Note that 20 means here actually that the JTAG TCK clock will be 40 times slower than system_clk.
-`define JTAG_TCK_HALF_PERIOD_TICK_COUNT 20
+`define JTAG_DPI_TCK_HALF_PERIOD_TICK_COUNT 20
 
 // The informational messages, if enabled, are printed to stdout. Error messages cannot be turned off and get printed to stderr.
-`define PRINT_INFORMATIONAL_MESSAGES 1
+`define JTAG_DPI_PRINT_INFORMATIONAL_MESSAGES 1
 
 
 module jtag_dpi ( system_clk,
@@ -99,10 +99,10 @@ module jtag_dpi ( system_clk,
         received_jtag_trst = 0;
         received_jtag_tdi  = 0;
 
-	    if ( 0 != jtag_dpi_init( `LISTENING_TCP_PORT,
-                                 `LISTEN_ON_LOCAL_ADDR_ONLY,
-                                 `JTAG_TCK_HALF_PERIOD_TICK_COUNT,
-                                 `PRINT_INFORMATIONAL_MESSAGES ) )
+        if ( 0 != jtag_dpi_init( `JTAG_DPI_LISTENING_TCP_PORT,
+                                 `JTAG_DPI_LISTEN_ON_LOCAL_ADDR_ONLY,
+                                 `JTAG_DPI_TCK_HALF_PERIOD_TICK_COUNT,
+                                 `JTAG_DPI_PRINT_INFORMATIONAL_MESSAGES ) )
           begin
              $display("Error initializing the JTAG DPI module.");
              $finish;
