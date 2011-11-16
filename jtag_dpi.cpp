@@ -159,6 +159,12 @@ static void close_current_connection ( void )
 
 static void send_byte ( const uint8_t data )
 {
+  // Note that the socket has been opened with SOCK_NONBLOCK,
+  // which means that this send() call could theoretically fail
+  // if the socket's send buffer were full.
+  // However, we know that adv_jtag_bridge always waits
+  // for a reply before sending the next command, so we're safe here.
+
   if ( -1 == send( s_connectionSocket,
                    &data,
                    sizeof(data),
