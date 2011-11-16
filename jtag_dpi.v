@@ -1,5 +1,7 @@
-/*
-  See the README file for more information.
+
+/* Version 1.0, November 2011.
+
+  See the README file for information about this module.
   
   Copyright (c) 2011 R. Diez                              
                                                              

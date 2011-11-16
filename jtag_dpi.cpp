@@ -1,8 +1,8 @@
 
-/* See the counterpart Verilog file jtag_dpi.v for more information
-   on this module.
+/* Version 1.0, November 2011.
 
-   At the moment, this implementation only runs on Linux.
+   See the counterpart Verilog file jtag_dpi.v for more information
+   about this module.
 
    During development, use compiler flag -DDEBUG in order to enable assertions.
  
