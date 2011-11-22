@@ -41,6 +41,9 @@ Note that, if the socket connection is lost for some reason, you can start anoth
 of adv_jtag_bridge and connect to the simulation again. This is equivalent to disconnecting
 and reconnecting a physical JTAG cable on real hardware.
 
+You should be aware that there are no security checks at all,
+any user logged on to the local computer can connect to the TCP socket.
+
 The JTAG DPI module is loosely based on its VPI counterpart in the Advanced Debug System
 (as of october 2011, version 2.5),
 as the (very simple) protocol over the TCP socket has to remain compatible with the adv_jtag_bridge side.
@@ -62,13 +65,13 @@ to hear your experiences with this module. This section describes how I have don
 Note that the current implementation of the JTAG DPI module has been developed and tested only on Linux.
 
 You need to be familiar with Verilator or your simulator of choice,
-as you need to add the jtag_dpi.cpp file to the generated C++ code. There are a few ways to do that:
+as you need to add file I<< jtag_dpi.cpp >> to the generated C++ code. There are a few ways to do that:
 
   Alternative 1) Add the jtag_dpi.cpp to the Verilator command line.
   Alternative 2) Include jtag_dpi.cpp from your main .cpp file (with #include).
   Alternative 3) Edit the makefile you are using.
 
-You also need to add the jtag_dpi.v file to the Verilog sources and connect
+You also need to add file I<< jtag_dpi.v >> to the Verilog sources and connect
 its Verilog module to the JTAG TAP module, you need something like this:
 
   jtag_dpi jtag_dpi_instance
@@ -102,7 +105,7 @@ so that the TCP port number has the wrong format on
 little-endian processors (which includes all Intel-compatible PCs). Until this bug is fixed
 you must specify on one side the familiar port number 4567 (which is 11D7 in hex),
 and on the other side port number 55057 (which is D711 in hex, note how the bytes are reversed).
-For the DPI side, look at constant LISTENING_TCP_PORT in the jtag_dpi.v file,
+For the DPI side, look at constant LISTENING_TCP_PORT in file I<< jtag_dpi.v >>,
 and for the adv_jtag_bridge side, look at command-line parameter -p .
 
 =head2 How you can help
