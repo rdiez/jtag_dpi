@@ -53,7 +53,7 @@
 // NOTE: The Verilator-generated forward declarations of the DPI methods like jtag_dpi_init()
 //       must be visible to this file. If you are compiling this file as a standalone module,
 //       you will have to include here the apropriate Verilator-generated header file.
-//       Example:  #include "Vminsoc_bench.h"
+//       Example:  #include "Vminsoc_bench_core__Dpi.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -146,14 +146,80 @@ static std::string get_error_message ( const char * const prefix_msg,
 }
 
 
+static void close_a ( const int fd )
+{
+  for ( ; ; )
+  {
+    const int res = close( fd );
+
+    if ( res == -1 && errno == EINTR )
+        continue;
+
+    assert( res == 0 );
+    
+    break;
+  }
+}
+
+
 static void close_current_connection ( void )
 {
   assert( s_connectionSocket != -1 );
   
-  if ( -1 == close( s_connectionSocket ) )
-    assert( false );
+  close_a( s_connectionSocket );
   
   s_connectionSocket = -1;
+}
+
+
+static ssize_t send_eintr ( const int sockfd,
+                            const void * const buf,
+                            const size_t len,
+                            const int flags )
+{
+  for ( ; ; )
+  {
+    const ssize_t ret = send( sockfd, buf, len, flags );
+
+    if ( ret == -1 && errno == EINTR )
+      continue;
+
+    return ret;
+  }
+}
+
+
+static ssize_t recv_eintr ( const int sockfd,
+                            void * const buf,
+                            const size_t len,
+                            const int flags )
+{
+  for ( ; ; )
+  {
+    const ssize_t ret = recv( sockfd, buf, len, flags );
+
+    if ( ret == -1 && errno == EINTR )
+      continue;
+
+    return ret;
+  }
+}
+
+
+static int accept4_eintr ( const int sockfd,
+                           struct sockaddr * const addr,
+                           socklen_t * const addrlen,
+                           const int flags )
+{
+  for ( ; ; )
+  {
+    const ssize_t ret = accept4( sockfd, addr, addrlen, flags );
+
+    if ( ret == -1 && errno == EINTR )
+      continue;
+
+    return ret;
+  }
 }
 
 
@@ -165,11 +231,11 @@ static void send_byte ( const uint8_t data )
   // However, we know that adv_jtag_bridge always waits
   // for a reply before sending the next command, so we're safe here.
 
-  if ( -1 == send( s_connectionSocket,
-                   &data,
-                   sizeof(data),
-                   0  // No special flags.
-                   ) )
+  if ( -1 == send_eintr( s_connectionSocket,
+                         &data,
+                         sizeof(data),
+                         0  // No special flags.
+                         ) )
   {
     throw std::runtime_error( get_error_message( "Error sending data: ", errno ) );
   }
@@ -200,8 +266,7 @@ static void close_listening_socket ( void )
 {
   assert( s_listeningSocket != -1 );
 
-  if ( -1 == close( s_listeningSocket ) )
-    assert( false );
+  close_a( s_listeningSocket );
 
   s_listeningSocket = -1;
 }
@@ -287,26 +352,33 @@ static void accept_connection ( void )
 {
   assert( s_listeningSocket != -1 );
 
-  pollfd polledFd;
-
-  polledFd.fd      = s_listeningSocket;
-  polledFd.events  = POLLIN | POLLERR;
-  polledFd.revents = 0;
-
-  const int pollRes = poll( &polledFd, 1, 0 );
-
-  if ( pollRes == 0 )
+  for ( ; ; )
   {
-    // No incoming connection is yet there.
-    return;
-  }
+    pollfd polled_fd;
+
+    polled_fd.fd      = s_listeningSocket;
+    polled_fd.events  = POLLIN | POLLERR;
+    polled_fd.revents = 0;
+
+    const int poll_res = poll( &polled_fd, 1, 0 );
+
+    if ( poll_res == 0 )
+    {
+      // No incoming connection is yet there.
+      return;
+    }
   
-  if ( pollRes == -1 )
-  {
-    throw std::runtime_error( get_error_message( "Error polling the listening socket: ", errno ) );
-  }
+    if ( poll_res == -1 )
+    {
+      if ( errno == EINTR )
+        continue;
+      
+      throw std::runtime_error( get_error_message( "Error polling the listening socket: ", errno ) );
+    }
 
-  assert( pollRes == 1 );
+    assert( poll_res == 1 );
+    break;
+  }
 
   if ( s_print_informational_messages )
   {
@@ -317,10 +389,10 @@ static void accept_connection ( void )
   sockaddr_in remoteAddr;
   socklen_t remoteAddrLen = sizeof( remoteAddr );
 
-  const int connectionSocket = accept4( s_listeningSocket,
-                                        (sockaddr *) &remoteAddr,
-                                        &remoteAddrLen,
-                                        SOCK_NONBLOCK | SOCK_CLOEXEC );
+  const int connectionSocket = accept4_eintr( s_listeningSocket,
+                                              (sockaddr *) &remoteAddr,
+                                              &remoteAddrLen,
+                                              SOCK_NONBLOCK | SOCK_CLOEXEC );
 
   // Any errors accepting a connection are considered non-critical and do not normally stop the simulation,
   // as the remote client can try to reconnect at a later point in time.
@@ -357,8 +429,7 @@ static void accept_connection ( void )
     
     if ( connectionSocket != -1 )
     {
-      if ( -1 == close( connectionSocket ) )
-        assert( false );
+      close_a( connectionSocket );
     }
 
     return;
@@ -384,11 +455,11 @@ static void receive_commands ( unsigned char * const jtag_tms,
   {
     uint8_t received_data;
 
-    const ssize_t received_byte_count = recv( s_connectionSocket,
-                                              &received_data,
-                                              1, // Receive just 1 byte.
-                                              0  // No special flags.
-                                            );
+    const ssize_t received_byte_count = recv_eintr( s_connectionSocket,
+                                                    &received_data,
+                                                    1, // Receive just 1 byte.
+                                                    0  // No special flags.
+                                                    );
     if ( received_byte_count == 0 )
     {
       if ( s_print_informational_messages )
