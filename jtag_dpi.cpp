@@ -530,12 +530,6 @@ static void receive_commands ( unsigned char * const jtag_tms,
     }
     else
     {
-      if ( s_print_informational_messages )
-      {
-        // printf( "%sReceived JTAG data 0x%02X.\n", INFO_MSG_PREFIX, received_data );
-        // fflush( stdout );
-      }
-
       if ( 0 != ( received_data & 0xf0 ) )
       {
         char buffer[80];
@@ -550,6 +544,20 @@ static void receive_commands ( unsigned char * const jtag_tms,
       *jtag_trst = ( received_data & 0x02 ) ? 1 : 0;
       *jtag_tdi  = ( received_data & 0x04 ) ? 1 : 0;
       *jtag_tms  = ( received_data & 0x08 ) ? 1 : 0;
+
+      if ( s_print_informational_messages )
+      {
+        /*
+        printf( "%sReceived JTAG data 0x%02X, TCK: %d, TMS: %d, TDI: %d, TRST: %d.\n",
+                INFO_MSG_PREFIX,
+                received_data,
+                *jtag_tck,
+                *jtag_tms,
+                *jtag_tdi,
+                *jtag_trst );
+        fflush( stdout );
+        */
+      }
 
       // Acknowledge the received data.
       send_byte( received_data | 0x10 );
