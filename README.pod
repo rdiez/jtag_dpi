@@ -19,7 +19,7 @@ However, the POD syntax is quite simple and can be edited with a standard text e
 
 =head1 JTAG DPI module for OpenRISC simulation with Verilator
 
-Version 1.0, November 2011
+Version 1.02, August 2012.
 
 If you are simulating an OpenRISC-based System-on-a-Chip (SoC) with
 L<< Icarus Verilog|http://iverilog.icarus.com/ >>, you have probably
