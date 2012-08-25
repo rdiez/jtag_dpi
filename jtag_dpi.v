@@ -25,12 +25,6 @@
   from http://www.gnu.org/licenses/
 */
 
-`define JTAG_DPI_LISTENING_TCP_PORT 4567
-
-// Whether to listen on localhost / 127.0.0.1 only. Otherwise,
-// it listens on all IP addresses, which means any computer
-// in the network can connect to the JTAG DPI module.
-`define JTAG_DPI_LISTEN_ON_LOCAL_ADDR_ONLY 1
 
 // 1/2 of a JTAG TCK clock period will be this many system_clk ticks.
 //
@@ -55,28 +49,32 @@
 // Note that 20 means here actually that the JTAG TCK clock will be 40 times slower than system_clk.
 `define JTAG_DPI_TCK_HALF_PERIOD_TICK_COUNT 20
 
-// The informational messages, if enabled, are printed to stdout. Error messages cannot be turned off and get printed to stderr.
-`define JTAG_DPI_PRINT_INFORMATIONAL_MESSAGES 1
 
+module jtag_dpi
+  #( LISTENING_TCP_PORT = 4567,
+     LISTEN_ON_LOCAL_ADDR_ONLY = 1,  // Whether to listen on localhost / 127.0.0.1 only. Otherwise,
+                                     // it listens on all IP addresses, which means any computer
+                                     // in the network can connect to the JTAG DPI module.
 
-module jtag_dpi ( system_clk,
-                  jtag_tms_o,
-                  jtag_tck_o,
-                  jtag_trst_o,
-                  jtag_tdi_o,
-                  jtag_tdo_i );
+     PRINT_INFORMATIONAL_MESSAGES = 1,  // The informational messages, if enabled, are printed to stdout. Error messages
+                                        // cannot be turned off and get printed to stderr.
 
-   input  system_clk;
-   output jtag_tms_o;
-   output jtag_tck_o;
-   output jtag_trst_o;
-   output jtag_tdi_o;
-   input  jtag_tdo_i;
+     PRINT_RECEIVED_JTAG_DATA = 0
+   )
+   ( input  system_clk,
+     output jtag_tms_o,
+     output jtag_tck_o,
+     output jtag_trst_o,
+     output jtag_tdi_o,
+     input  jtag_tdo_i
+   );
+
 
    reg    received_jtag_tms;
    reg    received_jtag_tck;
    reg    received_jtag_trst;
    reg    received_jtag_tdi;
+   reg    received_jtag_new_data_available;
 
    import "DPI-C" function int jtag_dpi_init ( input integer tcp_port,
                                                input bit listen_on_local_addr_only,
@@ -87,7 +85,8 @@ module jtag_dpi ( system_clk,
                                                output bit jtag_tck,
                                                output bit jtag_trst,
                                                output bit jtag_tdi,
-                                               input  bit jtag_tdo );
+                                               output bit jtag_new_data_available,
+                                               input bit  jtag_tdo );
 
    // It is not necessary to call jtag_dpi_terminate(). However, calling it
    // will release all resources associated with the JTAG DPI module, and that can help
@@ -96,15 +95,15 @@ module jtag_dpi ( system_clk,
 
    initial
      begin
-        received_jtag_tms  = 0;
-        received_jtag_tck  = 0;
-        received_jtag_trst = 0;
-        received_jtag_tdi  = 0;
+        jtag_tms_o  = 0;
+        jtag_tck_o  = 0;
+        jtag_trst_o = 1;  // The JTAG TRST reset signal is active when low.
+        jtag_tdi_o  = 0;
 
-        if ( 0 != jtag_dpi_init( `JTAG_DPI_LISTENING_TCP_PORT,
-                                 `JTAG_DPI_LISTEN_ON_LOCAL_ADDR_ONLY,
+        if ( 0 != jtag_dpi_init( LISTENING_TCP_PORT,
+                                 LISTEN_ON_LOCAL_ADDR_ONLY,
                                  `JTAG_DPI_TCK_HALF_PERIOD_TICK_COUNT,
-                                 `JTAG_DPI_PRINT_INFORMATIONAL_MESSAGES ) )
+                                 PRINT_INFORMATIONAL_MESSAGES ) )
           begin
              $display("Error initializing the JTAG DPI module.");
              $finish;
@@ -117,17 +116,29 @@ module jtag_dpi ( system_clk,
                                  received_jtag_tck,
                                  received_jtag_trst,
                                  received_jtag_tdi,
+                                 received_jtag_new_data_available,
                                  jtag_tdo_i ) )
           begin
              $display("Error receiving from the JTAG DPI module.");
              $finish;
           end;
 
-        jtag_tms_o  <= received_jtag_tms;
-        jtag_tck_o  <= received_jtag_tck;
-        jtag_trst_o <= received_jtag_trst;
-        jtag_tdi_o  <= received_jtag_tdi;
+        if ( received_jtag_new_data_available )
+          begin
+             if ( PRINT_RECEIVED_JTAG_DATA )
+               begin
+                  $display( "JTAG DPI module: Received JTAG data: TCK: %0d, TMS: %0d, TDI: %0d, TRST: %0d.",
+                            received_jtag_tck,
+                            received_jtag_tms,
+                            received_jtag_tdi,
+                            received_jtag_trst );
+               end
 
+             jtag_tms_o  <= received_jtag_tms;
+             jtag_tck_o  <= received_jtag_tck;
+             jtag_trst_o <= received_jtag_trst;
+             jtag_tdi_o  <= received_jtag_tdi;
+          end
      end;
 
 endmodule

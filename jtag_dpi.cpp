@@ -449,8 +449,11 @@ static void receive_commands ( unsigned char * const jtag_tms,
                                unsigned char * const jtag_tck,
                                unsigned char * const jtag_trst,
                                unsigned char * const jtag_tdi,
+                               unsigned char * const jtag_new_data_available,
                                const unsigned char   jtag_tdo )
 {
+  *jtag_new_data_available = 0;
+
   for ( ; ; )
   {
     uint8_t received_data;
@@ -545,6 +548,8 @@ static void receive_commands ( unsigned char * const jtag_tms,
       *jtag_tdi  = ( received_data & 0x04 ) ? 1 : 0;
       *jtag_tms  = ( received_data & 0x08 ) ? 1 : 0;
 
+      *jtag_new_data_available = 1;
+  
       if ( s_print_informational_messages )
       {
         /*
@@ -572,6 +577,7 @@ static void serve_connection ( unsigned char * const jtag_tms,
                                unsigned char * const jtag_tck,
                                unsigned char * const jtag_trst,
                                unsigned char * const jtag_tdi,
+                               unsigned char * const jtag_new_data_available,
                                const unsigned char jtag_tdo )
 {
   assert( s_connectionSocket != -1 );
@@ -588,6 +594,7 @@ static void serve_connection ( unsigned char * const jtag_tms,
                         jtag_tck,
                         jtag_trst,
                         jtag_tdi,
+                        jtag_new_data_available,
                         jtag_tdo );
       break;
       
@@ -603,6 +610,7 @@ static void serve_connection ( unsigned char * const jtag_tms,
                           jtag_tck,
                           jtag_trst,
                           jtag_tdi,
+                          jtag_new_data_available,
                           jtag_tdo );
       }
       break;
@@ -715,6 +723,7 @@ int jtag_dpi_tick ( unsigned char * const jtag_tms,
                     unsigned char * const jtag_tck,
                     unsigned char * const jtag_trst,
                     unsigned char * const jtag_tdi,
+                    unsigned char * const jtag_new_data_available,
                     const unsigned char jtag_tdo )
 {
   try
@@ -742,6 +751,7 @@ int jtag_dpi_tick ( unsigned char * const jtag_tms,
                        jtag_tck,
                        jtag_trst,
                        jtag_tdi,
+                       jtag_new_data_available,
                        jtag_tdo );
    }
   }
