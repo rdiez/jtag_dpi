@@ -45,4 +45,6 @@ int main ( int argc, char **argv, char **env )
   }
   
   top->final();
+
+  return 0;
 }
