@@ -5,12 +5,12 @@
    about this module.
 
    During development, use compiler flag -DDEBUG in order to enable assertions.
- 
+
    About the socket protocol and possible alternatives.
 
      The protocol used over the socket between the adv_jtag_bridge and the DPI module
      could be optimised by allowing the client to queue complex commands, instead
-     of repeatedly sending single bits in a bit-bang fashion. An example implementation 
+     of repeatedly sending single bits in a bit-bang fashion. An example implementation
      of this technique might be (I haven't actually looked into it) the
      "Embecosm cycle accurate SystemC JTAG interface", described in document
      "Using JTAG with SystemC - Implementation of a Cycle Accurate Interface".
@@ -27,26 +27,26 @@
      or to use asynchronous I/O on the socket.
 
    License:
-     
-   Copyright (c) 2011 R. Diez                              
-                                                             
-   This source file may be used and distributed without        
-   restriction provided that this copyright statement is not   
-   removed from the file and that any derivative work contains 
+
+   Copyright (c) 2011 R. Diez
+
+   This source file may be used and distributed without
+   restriction provided that this copyright statement is not
+   removed from the file and that any derivative work contains
    the original copyright notice and the associated disclaimer.
-                                                             
-   This source file is free software; you can redistribute it  
-   and/or modify it under the terms of the GNU Lesser General  
+
+   This source file is free software; you can redistribute it
+   and/or modify it under the terms of the GNU Lesser General
    Public License version 3 as published by the Free Software Foundation.
-                                                             
-   This source is distributed in the hope that it will be      
-   useful, but WITHOUT ANY WARRANTY; without even the implied  
-   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR     
+
+   This source is distributed in the hope that it will be
+   useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
    PURPOSE.  See the GNU Lesser General Public License for more
-   details.                                                    
-                                                             
-   You should have received a copy of the GNU Lesser General   
-   Public License along with this source; if not, download it  
+   details.
+
+   You should have received a copy of the GNU Lesser General
+   Public License along with this source; if not, download it
    from http://www.gnu.org/licenses/
 */
 
@@ -114,10 +114,10 @@ static std::string get_error_message ( const char * const prefix_msg,
                                        const int errno_val )
 {
   std::ostringstream str;
-  
+
   if ( prefix_msg != NULL )
     str << prefix_msg;
-  
+
   str << "Error code " << errno_val << ": ";
 
   char buffer[ 2048 ];
@@ -125,23 +125,20 @@ static std::string get_error_message ( const char * const prefix_msg,
   #if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
   #error "The call to strerror_r() below will not compile properly. The easiest thing to do is to define _GNU_SOURCE when compiling this module."
   #endif
-  
+
   const char * const err_msg = strerror_r( errno_val, buffer, sizeof(buffer) );
-  
+
   if ( err_msg == NULL )
   {
     str << "<no error message available>";
   }
   else
   {
-    // Always terminate the string, just in case. Note that the string
-    // may not actually be in the buffer, see the strerror_r() documentation.
-    buffer[ sizeof( buffer ) / sizeof( buffer[0] ) - 1 ] = '\0';
-    assert( strlen( buffer ) < sizeof( buffer ) );
-    
+    // According to the strerror_r() documentation, if the string lands in the buffer,
+    // it may be truncated, but it always includes a terminating null byte.
     str << err_msg;
   }
-  
+
   return str.str();
 }
 
@@ -156,7 +153,7 @@ static void close_a ( const int fd )
         continue;
 
     assert( res == 0 );
-    
+
     break;
   }
 }
@@ -165,9 +162,9 @@ static void close_a ( const int fd )
 static void close_current_connection ( void )
 {
   assert( s_connectionSocket != -1 );
-  
+
   close_a( s_connectionSocket );
-  
+
   s_connectionSocket = -1;
 }
 
@@ -245,7 +242,7 @@ static void send_byte ( const uint8_t data )
 static std::string ip_address_to_text ( const in_addr * const addr )
 {
   char ip_addr_buffer[80];
-  
+
   const char * const str = inet_ntop( AF_INET,
                                       addr,
                                       ip_addr_buffer,
@@ -301,7 +298,7 @@ static void create_listening_socket ( void )
     {
       throw std::runtime_error( get_error_message( "Error setting the listen socket options: ", errno ) );
     }
-    
+
     sockaddr_in addr;
     memset( &addr, 0, sizeof(addr) );
     addr.sin_family = AF_INET;
@@ -325,7 +322,7 @@ static void create_listening_socket ( void )
       if ( s_print_informational_messages )
       {
         const std::string addr_str = ip_address_to_text( &addr.sin_addr );
-        
+
         printf( "%sListening on IP address %s (%s), TCP port %d.\n",
                 INFO_MSG_PREFIX,
                 addr_str.c_str(),
@@ -334,7 +331,7 @@ static void create_listening_socket ( void )
         fflush( stdout );
       }
     }
-  
+
     if ( listen( s_listeningSocket, 1 ) == -1 )
     {
       throw std::runtime_error( get_error_message( "Error listening on the socket: ", errno ) );
@@ -367,12 +364,12 @@ static void accept_connection ( void )
       // No incoming connection is yet there.
       return;
     }
-  
+
     if ( poll_res == -1 )
     {
       if ( errno == EINTR )
         continue;
-      
+
       throw std::runtime_error( get_error_message( "Error polling the listening socket: ", errno ) );
     }
 
@@ -385,7 +382,7 @@ static void accept_connection ( void )
     // printf( "%sPoll result flags: 0x%02X\n", polledFd.revents, INFO_MSG_PREFIX );
     // fflush( stdout );
   }
-    
+
   sockaddr_in remoteAddr;
   socklen_t remoteAddrLen = sizeof( remoteAddr );
 
@@ -402,7 +399,7 @@ static void accept_connection ( void )
     {
       throw std::runtime_error( get_error_message( NULL, errno ) );
     }
-    
+
     if ( remoteAddrLen > sizeof( remoteAddr ) )
     {
       throw std::runtime_error( "The address buffer is too small." );
@@ -411,7 +408,7 @@ static void accept_connection ( void )
     if ( s_print_informational_messages )
     {
       const std::string addr_str = ip_address_to_text( &remoteAddr.sin_addr );
-      
+
       printf( "%sAccepted an incoming connection from IP address %s, TCP port %d.\n",
               INFO_MSG_PREFIX,
               addr_str.c_str(),
@@ -426,7 +423,7 @@ static void accept_connection ( void )
              ERROR_MSG_PREFIX_TICK,
              e.what() );
     fflush( stderr );
-    
+
     if ( connectionSocket != -1 )
     {
       close_a( connectionSocket );
@@ -449,6 +446,7 @@ static void receive_commands ( unsigned char * const jtag_tms,
                                unsigned char * const jtag_tck,
                                unsigned char * const jtag_trst,
                                unsigned char * const jtag_tdi,
+                               unsigned char * const jtag_new_data_available,
                                const unsigned char   jtag_tdo )
 {
   for ( ; ; )
@@ -492,7 +490,7 @@ static void receive_commands ( unsigned char * const jtag_tms,
         // printf( "%sReceived JTAG command: 0x%02X\n", INFO_MSG_PREFIX, received_data );
         // fflush( stdout );
       }
-      
+
       switch ( received_data )
       {
       case 0x80:
@@ -530,12 +528,6 @@ static void receive_commands ( unsigned char * const jtag_tms,
     }
     else
     {
-      if ( s_print_informational_messages )
-      {
-        // printf( "%sReceived JTAG data 0x%02X.\n", INFO_MSG_PREFIX, received_data );
-        // fflush( stdout );
-      }
-
       if ( 0 != ( received_data & 0xf0 ) )
       {
         char buffer[80];
@@ -551,6 +543,22 @@ static void receive_commands ( unsigned char * const jtag_tms,
       *jtag_tdi  = ( received_data & 0x04 ) ? 1 : 0;
       *jtag_tms  = ( received_data & 0x08 ) ? 1 : 0;
 
+      *jtag_new_data_available = 1;
+
+      if ( s_print_informational_messages )
+      {
+        /*
+        printf( "%sReceived JTAG data 0x%02X, TCK: %d, TMS: %d, TDI: %d, TRST: %d.\n",
+                INFO_MSG_PREFIX,
+                received_data,
+                *jtag_tck,
+                *jtag_tms,
+                *jtag_tdi,
+                *jtag_trst );
+        fflush( stdout );
+        */
+      }
+
       // Acknowledge the received data.
       send_byte( received_data | 0x10 );
 
@@ -564,6 +572,7 @@ static void serve_connection ( unsigned char * const jtag_tms,
                                unsigned char * const jtag_tck,
                                unsigned char * const jtag_trst,
                                unsigned char * const jtag_tdi,
+                               unsigned char * const jtag_new_data_available,
                                const unsigned char jtag_tdo )
 {
   assert( s_connectionSocket != -1 );
@@ -572,7 +581,7 @@ static void serve_connection ( unsigned char * const jtag_tms,
   {
     if ( s_clock_notification_counter > 0 )
       --s_clock_notification_counter;
-    
+
     switch ( s_connectionState )
     {
     case cs_waiting_to_receive_commands:
@@ -580,9 +589,10 @@ static void serve_connection ( unsigned char * const jtag_tms,
                         jtag_tck,
                         jtag_trst,
                         jtag_tdi,
+                        jtag_new_data_available,
                         jtag_tdo );
       break;
-      
+
     case cs_waiting_to_send_clock_notification:
 
       if ( s_clock_notification_counter == 0 )
@@ -595,10 +605,11 @@ static void serve_connection ( unsigned char * const jtag_tms,
                           jtag_tck,
                           jtag_trst,
                           jtag_tdi,
+                          jtag_new_data_available,
                           jtag_tdo );
       }
       break;
-      
+
     default:
       assert( false );
     }
@@ -610,7 +621,7 @@ static void serve_connection ( unsigned char * const jtag_tms,
              ERROR_MSG_PREFIX_TICK,
              e.what() );
     fflush( stderr );
-    
+
     // Close the connection. The remote client can reconnect later.
     close_current_connection();
   }
@@ -628,21 +639,21 @@ int jtag_dpi_init ( const int tcp_port,
     {
       throw std::runtime_error( "The module has already been initialized." );
     }
-  
+
     if ( tcp_port == 0 )
     {
       throw std::runtime_error( "Invalid TCP port." );
     }
-    
+
     s_listening_tcp_port = tcp_port;
 
-    
+
     switch ( print_informational_messages )
     {
     case 0:
       s_print_informational_messages = false;
       break;
-      
+
     case 1:
       s_print_informational_messages = true;
       break;
@@ -651,7 +662,7 @@ int jtag_dpi_init ( const int tcp_port,
       throw std::runtime_error( "Invalid print_informational_messages parameter." );
     }
 
-    
+
     switch ( listen_on_local_addr_only )
     {
     case 0:
@@ -665,13 +676,13 @@ int jtag_dpi_init ( const int tcp_port,
     default:
       throw std::runtime_error( "Invalid listen_on_local_addr_only parameter." );
     }
-    
-    
+
+
     if ( jtag_tck_half_period_tick_count == 0 )
     {
       throw std::runtime_error( "Invalid jtag_tck_half_period_tick_count parameter." );
     }
-    
+
     s_jtag_tck_half_period_tick_count = jtag_tck_half_period_tick_count;
 
 
@@ -681,7 +692,7 @@ int jtag_dpi_init ( const int tcp_port,
     s_connectionState = cs_invalid;
 
     create_listening_socket();
-    
+
     s_already_initialized = true;
   }
   catch ( const std::exception & e )
@@ -707,17 +718,20 @@ int jtag_dpi_tick ( unsigned char * const jtag_tms,
                     unsigned char * const jtag_tck,
                     unsigned char * const jtag_trst,
                     unsigned char * const jtag_tdi,
+                    unsigned char * const jtag_new_data_available,
                     const unsigned char jtag_tdo )
 {
   try
   {
+    *jtag_new_data_available = 0;
+
     if ( !s_already_initialized )
     {
       throw std::runtime_error( "This module has not been initialized yet." );
     }
-    
+
     // If a connection is lost, the listening socket must be created again.
-    
+
     if ( s_connectionSocket == -1 )
     {
       if ( s_listeningSocket == -1 )
@@ -734,6 +748,7 @@ int jtag_dpi_tick ( unsigned char * const jtag_tms,
                        jtag_tck,
                        jtag_trst,
                        jtag_tdi,
+                       jtag_new_data_available,
                        jtag_tdo );
    }
   }
@@ -749,7 +764,7 @@ int jtag_dpi_tick ( unsigned char * const jtag_tms,
     fflush( stderr );
     return RET_FAILURE;
   }
-  
+
   return RET_SUCCESS;
 }
 
