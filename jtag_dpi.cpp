@@ -1,5 +1,5 @@
 
-/* Version 1.0, November 2011.
+/* Version 1.02, September 2012.
 
    See the counterpart Verilog file jtag_dpi.v for more information
    about this module.
